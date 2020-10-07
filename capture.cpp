@@ -61,7 +61,86 @@ struct buffer {
     void *                  start;
     size_t                  length;
 };
+static const char short_options [] = "c:d:f:F:hmo:rs:uz";
 
+static const struct option
+        long_options [] = {
+        { "count",      required_argument,      NULL,           'c' },
+        { "device",     required_argument,      NULL,           'd' },
+        { "format",     required_argument,      NULL,           'f' },
+        { "field",      required_argument,      NULL,           'F' },
+        { "help",       no_argument,            NULL,           'h' },
+        { "mmap",       no_argument,            NULL,           'm' },
+        { "output",     required_argument,      NULL,           'o' },
+        { "read",       no_argument,            NULL,           'r' },
+        { "size",       required_argument,      NULL,           's' },
+        { "userp",      no_argument,            NULL,           'u' },
+        { "zcopy",      no_argument,            NULL,           'z' },
+        { 0, 0, 0, 0 }
+};
+
+static struct {
+    const char *name;
+    unsigned int fourcc;
+} pixel_formats[] = {
+        { "RGB332", V4L2_PIX_FMT_RGB332 },
+        { "RGB555", V4L2_PIX_FMT_RGB555 },
+        { "RGB565", V4L2_PIX_FMT_RGB565 },
+        { "RGB555X", V4L2_PIX_FMT_RGB555X },
+        { "RGB565X", V4L2_PIX_FMT_RGB565X },
+        { "BGR24", V4L2_PIX_FMT_BGR24 },
+        { "RGB24", V4L2_PIX_FMT_RGB24 },
+        { "BGR32", V4L2_PIX_FMT_BGR32 },
+        { "RGB32", V4L2_PIX_FMT_RGB32 },
+        { "Y8", V4L2_PIX_FMT_GREY },
+        { "Y10", V4L2_PIX_FMT_Y10 },
+        { "Y12", V4L2_PIX_FMT_Y12 },
+        { "Y16", V4L2_PIX_FMT_Y16 },
+        { "UYVY", V4L2_PIX_FMT_UYVY },
+        { "VYUY", V4L2_PIX_FMT_VYUY },
+        { "YUYV", V4L2_PIX_FMT_YUYV },
+        { "YVYU", V4L2_PIX_FMT_YVYU },
+        { "NV12", V4L2_PIX_FMT_NV12 },
+        { "NV21", V4L2_PIX_FMT_NV21 },
+        { "NV16", V4L2_PIX_FMT_NV16 },
+        { "NV61", V4L2_PIX_FMT_NV61 },
+        { "NV24", V4L2_PIX_FMT_NV24 },
+        { "NV42", V4L2_PIX_FMT_NV42 },
+        { "SBGGR8", V4L2_PIX_FMT_SBGGR8 },
+        { "SGBRG8", V4L2_PIX_FMT_SGBRG8 },
+        { "SGRBG8", V4L2_PIX_FMT_SGRBG8 },
+        { "SRGGB8", V4L2_PIX_FMT_SRGGB8 },
+        { "SBGGR10_DPCM8", V4L2_PIX_FMT_SBGGR10DPCM8 },
+        { "SGBRG10_DPCM8", V4L2_PIX_FMT_SGBRG10DPCM8 },
+        { "SGRBG10_DPCM8", V4L2_PIX_FMT_SGRBG10DPCM8 },
+        { "SRGGB10_DPCM8", V4L2_PIX_FMT_SRGGB10DPCM8 },
+        { "SBGGR10", V4L2_PIX_FMT_SBGGR10 },
+        { "SGBRG10", V4L2_PIX_FMT_SGBRG10 },
+        { "SGRBG10", V4L2_PIX_FMT_SGRBG10 },
+        { "SRGGB10", V4L2_PIX_FMT_SRGGB10 },
+        { "SBGGR12", V4L2_PIX_FMT_SBGGR12 },
+        { "SGBRG12", V4L2_PIX_FMT_SGBRG12 },
+        { "SGRBG12", V4L2_PIX_FMT_SGRBG12 },
+        { "SRGGB12", V4L2_PIX_FMT_SRGGB12 },
+        { "DV", V4L2_PIX_FMT_DV },
+        { "MJPEG", V4L2_PIX_FMT_MJPEG },
+        { "MPEG", V4L2_PIX_FMT_MPEG },
+};
+static struct {
+    const char *name;
+    unsigned int field;
+} fields[] = {
+        { "ANY", V4L2_FIELD_ANY },
+        { "NONE", V4L2_FIELD_NONE },
+        { "TOP", V4L2_FIELD_TOP },
+        { "BOTTOM", V4L2_FIELD_BOTTOM },
+        { "INTERLACED", V4L2_FIELD_INTERLACED },
+        { "SEQ_TB", V4L2_FIELD_SEQ_TB },
+        { "SEQ_BT", V4L2_FIELD_SEQ_BT },
+        { "ALTERNATE", V4L2_FIELD_ALTERNATE },
+        { "INTERLACED_TB", V4L2_FIELD_INTERLACED_TB },
+        { "INTERLACED_BT", V4L2_FIELD_INTERLACED_BT },
+};
 static const char *     dev_name        = "/dev/video0";
 static io_method        io              = IO_METHOD_MMAP;
 static int              fd              = -1;
@@ -624,75 +703,7 @@ static void usage (FILE *fp, int argc, char **   argv){
             "",
             argv[0], count, dev_name, file_name, width, height);
 }
-
-static const char short_options [] = "c:d:f:F:hmo:rs:uz";
-
-static const struct option
-long_options [] = {
-    { "count",      required_argument,      NULL,           'c' },
-    { "device",     required_argument,      NULL,           'd' },
-    { "format",     required_argument,      NULL,           'f' },
-    { "field",      required_argument,      NULL,           'F' },
-    { "help",       no_argument,            NULL,           'h' },
-    { "mmap",       no_argument,            NULL,           'm' },
-    { "output",     required_argument,      NULL,           'o' },
-    { "read",       no_argument,            NULL,           'r' },
-    { "size",       required_argument,      NULL,           's' },
-    { "userp",      no_argument,            NULL,           'u' },
-    { "zcopy",      no_argument,            NULL,           'z' },
-    { 0, 0, 0, 0 }
-};
-
-static struct {
-    const char *name;
-    unsigned int fourcc;
-} pixel_formats[] = {
-    { "RGB332", V4L2_PIX_FMT_RGB332 },
-    { "RGB555", V4L2_PIX_FMT_RGB555 },
-    { "RGB565", V4L2_PIX_FMT_RGB565 },
-    { "RGB555X", V4L2_PIX_FMT_RGB555X },
-    { "RGB565X", V4L2_PIX_FMT_RGB565X },
-    { "BGR24", V4L2_PIX_FMT_BGR24 },
-    { "RGB24", V4L2_PIX_FMT_RGB24 },
-    { "BGR32", V4L2_PIX_FMT_BGR32 },
-    { "RGB32", V4L2_PIX_FMT_RGB32 },
-    { "Y8", V4L2_PIX_FMT_GREY },
-    { "Y10", V4L2_PIX_FMT_Y10 },
-    { "Y12", V4L2_PIX_FMT_Y12 },
-    { "Y16", V4L2_PIX_FMT_Y16 },
-    { "UYVY", V4L2_PIX_FMT_UYVY },
-    { "VYUY", V4L2_PIX_FMT_VYUY },
-    { "YUYV", V4L2_PIX_FMT_YUYV },
-    { "YVYU", V4L2_PIX_FMT_YVYU },
-    { "NV12", V4L2_PIX_FMT_NV12 },
-    { "NV21", V4L2_PIX_FMT_NV21 },
-    { "NV16", V4L2_PIX_FMT_NV16 },
-    { "NV61", V4L2_PIX_FMT_NV61 },
-    { "NV24", V4L2_PIX_FMT_NV24 },
-    { "NV42", V4L2_PIX_FMT_NV42 },
-    { "SBGGR8", V4L2_PIX_FMT_SBGGR8 },
-    { "SGBRG8", V4L2_PIX_FMT_SGBRG8 },
-    { "SGRBG8", V4L2_PIX_FMT_SGRBG8 },
-    { "SRGGB8", V4L2_PIX_FMT_SRGGB8 },
-    { "SBGGR10_DPCM8", V4L2_PIX_FMT_SBGGR10DPCM8 },
-    { "SGBRG10_DPCM8", V4L2_PIX_FMT_SGBRG10DPCM8 },
-    { "SGRBG10_DPCM8", V4L2_PIX_FMT_SGRBG10DPCM8 },
-    { "SRGGB10_DPCM8", V4L2_PIX_FMT_SRGGB10DPCM8 },
-    { "SBGGR10", V4L2_PIX_FMT_SBGGR10 },
-    { "SGBRG10", V4L2_PIX_FMT_SGBRG10 },
-    { "SGRBG10", V4L2_PIX_FMT_SGRBG10 },
-    { "SRGGB10", V4L2_PIX_FMT_SRGGB10 },
-    { "SBGGR12", V4L2_PIX_FMT_SBGGR12 },
-    { "SGBRG12", V4L2_PIX_FMT_SGBRG12 },
-    { "SGRBG12", V4L2_PIX_FMT_SGRBG12 },
-    { "SRGGB12", V4L2_PIX_FMT_SRGGB12 },
-    { "DV", V4L2_PIX_FMT_DV },
-    { "MJPEG", V4L2_PIX_FMT_MJPEG },
-    { "MPEG", V4L2_PIX_FMT_MPEG },
-};
-
-static unsigned int v4l2_format_code(const char *name)
-{
+static unsigned int v4l2_format_code(const char *name){
     unsigned int i;
 
     for (i = 0; i < ARRAY_SIZE(pixel_formats); ++i) {
@@ -702,25 +713,7 @@ static unsigned int v4l2_format_code(const char *name)
 
     return 0;
 }
-
-static struct {
-    const char *name;
-    unsigned int field;
-} fields[] = {
-    { "ANY", V4L2_FIELD_ANY },
-    { "NONE", V4L2_FIELD_NONE },
-    { "TOP", V4L2_FIELD_TOP },
-    { "BOTTOM", V4L2_FIELD_BOTTOM },
-    { "INTERLACED", V4L2_FIELD_INTERLACED },
-    { "SEQ_TB", V4L2_FIELD_SEQ_TB },
-    { "SEQ_BT", V4L2_FIELD_SEQ_BT },
-    { "ALTERNATE", V4L2_FIELD_ALTERNATE },
-    { "INTERLACED_TB", V4L2_FIELD_INTERLACED_TB },
-    { "INTERLACED_BT", V4L2_FIELD_INTERLACED_BT },
-};
-
-static unsigned int v4l2_field_code(const char *name)
-{
+static unsigned int v4l2_field_code(const char *name){
     unsigned int i;
 
     for (i = 0; i < ARRAY_SIZE(fields); ++i) {
@@ -730,102 +723,40 @@ static unsigned int v4l2_field_code(const char *name)
 
     return -1;
 }
-
-int
-main                            (int                    argc,
-                                 char **                argv)
-{
+int main (int  argc, char **   argv){
     for (;;) {
         int index;
         int c;
-
-        c = getopt_long (argc, argv,
-                short_options, long_options,
-                &index);
-
-        if (-1 == c)
-            break;
-
+        c = getopt_long (argc, argv,short_options, long_options, &index);
+        if (-1 == c)            {break;}
         switch (c) {
-            case 0: /* getopt_long() flag */
+            case 0: /* getopt_long() flag */                break;
+            case 'c':count = atoi (optarg);                break;
+            case 'd':dev_name = optarg;                break;
+            case 'f':  pixel_format = v4l2_format_code(optarg);
+                if (pixel_format == 0) { printf("Unsupported video format '%s'\n", optarg); pixel_format = V4L2_PIX_FMT_UYVY; }
                 break;
-
-            case 'c':
-                count = atoi (optarg);
+            case 'F': field = v4l2_field_code(optarg);
+                if ((int)field < 0) {printf("Unsupported field '%s'\n", optarg);field = V4L2_FIELD_INTERLACED;                }
                 break;
-
-            case 'd':
-                dev_name = optarg;
-                break;
-
-            case 'f':
-                pixel_format = v4l2_format_code(optarg);
-                if (pixel_format == 0) {
-                    printf("Unsupported video format '%s'\n", optarg);
-                    pixel_format = V4L2_PIX_FMT_UYVY;
-                }
-                break;
-
-            case 'F':
-                field = v4l2_field_code(optarg);
-                if ((int)field < 0) {
-                    printf("Unsupported field '%s'\n", optarg);
-                    field = V4L2_FIELD_INTERLACED;
-                }
-                break;
-
-            case 'h':
-                usage (stdout, argc, argv);
-                exit (EXIT_SUCCESS);
-
-            case 'm':
-                io = IO_METHOD_MMAP;
-                break;
-
-            case 'o':
-                file_name = optarg;
-                break;
-
-            case 'r':
-                io = IO_METHOD_READ;
-                break;
-
-            case 's':
-                width = atoi (strtok (optarg, "x"));
-                height = atoi (strtok (NULL, "x"));
-                break;
-
-            case 'u':
-                io = IO_METHOD_USERPTR;
-                break;
-
-            case 'z':
-                cuda_zero_copy = true;
-                break;
-
-            default:
-                usage (stderr, argc, argv);
-                exit (EXIT_FAILURE);
+            case 'h':usage (stdout, argc, argv); exit (EXIT_SUCCESS);
+            case 'm':io = IO_METHOD_MMAP;                break;
+            case 'o': file_name = optarg;                break;
+            case 'r':io = IO_METHOD_READ;                break;
+            case 's': width = atoi (strtok (optarg, "x")); height = atoi (strtok (NULL, "x"));break;
+            case 'u': io = IO_METHOD_USERPTR;                break;
+            case 'z': cuda_zero_copy = true;                break;
+            default:  usage (stderr, argc, argv); exit (EXIT_FAILURE);
         }
     }
-
     open_device ();
-
     init_device ();
-
     init_cuda ();
-
     start_capturing ();
-
     mainloop ();
-
     stop_capturing ();
-
     uninit_device ();
-
     close_device ();
-
     exit (EXIT_SUCCESS);
-
     return 0;
 }
