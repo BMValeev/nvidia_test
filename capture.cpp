@@ -19,18 +19,14 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
  * DEALINGS IN THE SOFTWARE.
  */
-
 /*
  *  V4L2 video capture example
  */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-
 #include <getopt.h>             /* getopt_long() */
-
 #include <fcntl.h>              /* low-level i/o */
 #include <unistd.h>
 #include <errno.h>
@@ -40,29 +36,28 @@
 #include <sys/time.h>
 #include <sys/mman.h>
 #include <sys/ioctl.h>
-
 #include <asm/types.h>          /* for videodev2.h */
-
 #include <linux/videodev2.h>
-
 #include <cuda_runtime.h>
 #include "yuv2rgb.cuh"
 
+#include <vector>
+#include <map>
+#include <string>
 #define CLEAR(x) memset (&(x), 0, sizeof (x))
 #define ARRAY_SIZE(a)   (sizeof(a)/sizeof((a)[0]))
+static std::map<std::string,int> descriptors;
 
 typedef enum {
     IO_METHOD_READ,
     IO_METHOD_MMAP,
     IO_METHOD_USERPTR,
 } io_method;
-
 struct buffer {
     void *                  start;
     size_t                  length;
 };
 static const char short_options [] = "c:d:f:F:hmo:rs:uz";
-
 static const struct option
         long_options [] = {
         { "count",      required_argument,      NULL,           'c' },
@@ -78,7 +73,6 @@ static const struct option
         { "zcopy",      no_argument,            NULL,           'z' },
         { 0, 0, 0, 0 }
 };
-
 static struct {
     const char *name;
     unsigned int fourcc;
@@ -156,23 +150,18 @@ static unsigned int     pixel_format    = V4L2_PIX_FMT_UYVY;
 static unsigned int     field           = V4L2_FIELD_INTERLACED;
 
 static void errno_exit                      (const char *           s){
-    fprintf (stderr, "%s error %d, %s\n",
-            s, errno, strerror (errno));
-
+    fprintf (stderr, "%s error %d, %s\n",            s, errno, strerror (errno));
     exit (EXIT_FAILURE);
-}
+}/*refactored*/
 static int xioctl   (int   fd,  int request, void *  arg){
     int r;
-
     do r = ioctl (fd, request, arg);
     while (-1 == r && EINTR == errno);
-
     return r;
-}
+}/*refactored*/
 static void process_image                   (void *           p){
     printf ("CUDA format conversion on frame %p\n", p);
     gpuConvertYUYVtoRGB ((unsigned char *) p, cuda_out_buffer, width, height);
-
     /* Save image. */
     if (count == 0) {
         FILE *fp = fopen (file_name, "wb");
@@ -180,100 +169,55 @@ static void process_image                   (void *           p){
         fwrite (cuda_out_buffer, 1, width * height * 3, fp);
         fclose (fp);
     }
-}
+}/*refactored*/
 static int read_frame                      (void){
     struct v4l2_buffer buf;
     unsigned int i;
-
     switch (io) {
         case IO_METHOD_READ:
             if (-1 == read (fd, buffers[0].start, buffers[0].length)) {
                 switch (errno) {
-                    case EAGAIN:
-                        return 0;
-
-                    case EIO:
-                        /* Could ignore EIO, see spec. */
-
-                        /* fall through */
-
-                    default:
-                        errno_exit ("read");
+                    case EAGAIN:                        return 0;
+                    case EIO:/* Could ignore EIO, see spec. */ /* fall through */
+                    default:errno_exit ("read");
                 }
             }
-
             process_image (buffers[0].start);
-
             break;
-
         case IO_METHOD_MMAP:
             CLEAR (buf);
-
             buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
             buf.memory = V4L2_MEMORY_MMAP;
-
             if (-1 == xioctl (fd, VIDIOC_DQBUF, &buf)) {
                 switch (errno) {
-                    case EAGAIN:
-                        return 0;
-
-                    case EIO:
-                        /* Could ignore EIO, see spec. */
-
-                        /* fall through */
-
-                    default:
-                        errno_exit ("VIDIOC_DQBUF");
+                    case EAGAIN:                        return 0;
+                    case EIO:  /* Could ignore EIO, see spec. *//* fall through */
+                    default:                        errno_exit ("VIDIOC_DQBUF");
                 }
             }
-
             assert (buf.index < n_buffers);
-
             process_image (buffers[buf.index].start);
-
-            if (-1 == xioctl (fd, VIDIOC_QBUF, &buf))
-                errno_exit ("VIDIOC_QBUF");
-
+            if (-1 == xioctl (fd, VIDIOC_QBUF, &buf))              {  errno_exit ("VIDIOC_QBUF");}
             break;
-
-        case IO_METHOD_USERPTR:
-            CLEAR (buf);
-
+        case IO_METHOD_USERPTR:            CLEAR (buf);
             buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
             buf.memory = V4L2_MEMORY_USERPTR;
-
             if (-1 == xioctl (fd, VIDIOC_DQBUF, &buf)) {
                 switch (errno) {
-                    case EAGAIN:
-                        return 0;
-
-                    case EIO:
-                        /* Could ignore EIO, see spec. */
-
-                        /* fall through */
-
-                    default:
-                        errno_exit ("VIDIOC_DQBUF");
+                    case EAGAIN:                        return 0;
+                    case EIO:  /* Could ignore EIO, see spec. */ /* fall through */
+                    default:                        errno_exit ("VIDIOC_DQBUF");
                 }
             }
-
             for (i = 0; i < n_buffers; ++i)
-                if (buf.m.userptr == (unsigned long) buffers[i].start
-                        && buf.length == buffers[i].length)
-                    break;
-
+                if (buf.m.userptr == (unsigned long) buffers[i].start  && buf.length == buffers[i].length)       {             break;}
             assert (i < n_buffers);
-
             process_image ((void *) buf.m.userptr);
-
-            if (-1 == xioctl (fd, VIDIOC_QBUF, &buf))
-                errno_exit ("VIDIOC_QBUF");
-
+            if (-1 == xioctl (fd, VIDIOC_QBUF, &buf))   {             errno_exit ("VIDIOC_QBUF");}
             break;
     }
-
     return 1;
-}
+}/*refactored*/
 static void mainloop                        (void){
     while (count-- > 0) {
         for (;;) {
@@ -393,7 +337,7 @@ static void init_mmap                       (void){
         if (MAP_FAILED == buffers[n_buffers].start)      {      errno_exit ("mmap");}
     }
 } /*refactored*/
-static void init_userp                      (unsigned int           buffer_size){
+static void init_userp                      (unsigned int buffer_size){
     struct v4l2_requestbuffers req;
     unsigned int page_size;
     page_size = getpagesize ();
@@ -555,6 +499,10 @@ int main (int  argc, char **   argv){
             default:  usage (stderr, argc, argv); exit (EXIT_FAILURE);
         }
     }
+    io=IO_METHOD_USERPTR;
+    cuda_zero_copy = true;
+    width=1920;
+    height=1080;
     open_device ();/*refactored*/
     init_device ();/*refactored*/
     init_cuda ();/*refactored*/
